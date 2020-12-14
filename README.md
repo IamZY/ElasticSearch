@@ -142,25 +142,299 @@ kibana和es的版本要一致
 
 es把后台把每个索引分成多个切片，每份分片可以在集群中不同的服务器迁移
 
+倒排索引
 
+## IK分词器
 
+如果使用中文，建议使用ik分词器
 
+![image-20201214191205358](images/image-20201214191205358.png)
 
++ 查看加载的插件
++ cmd中elasticsearch-plugin list
 
+查看不同的分词器效果
 
+![image-20201214191851531](images/image-20201214191851531.png)
 
+max_word最小粒度切分
 
+自己需要的词语 需要自己加入分词器字典中
 
+> ik分词器增加自己的配置
 
+![image-20201214192345491](images/image-20201214192345491.png)
 
+以后的话 我们需要自己配置分词就在自己定义的dic文件中进行配置即可
 
+## Rest风格说明
 
+### 创建一个索引
 
++ put
 
+  ```
+  PUT /索引名/~类型名~/文档id
+  {请求体}
+  ```
 
+  完成了添加索引 数据添加成功 在初期可以当作数据库使用
 
+  ![image-20201214193319449](images/image-20201214193319449.png)
 
+  数据类型
 
+  + 指定字段的类型
+
+    ```
+    PUT /test2
+    {
+      "mappings": {
+        "properties": {
+          "name":{
+            "type": "text"
+          },
+          "age":{
+            "type": "long"
+          },
+          "birth":{
+            "type": "date"
+          }
+        }
+      }
+    }
+    ```
+
++ get
+
+  获取具体信息
+
+  ```
+  GET test2
+  
+  GET ntuzy/user/_search?q=name:ntuzy
+  ```
+
+  + 复杂查询
+
+    ```
+    GET ntuzy/user/_search
+    {
+      "query": {
+        "match": {
+          "name": "张三"
+        }
+      },
+      // 结果过滤
+      "_source": ["name","desc"]
+    }
+    
+    
+    // 通过字段排序
+    GET ntuzy/user/_search
+    {
+      "query": {
+        "match": {
+          "name": "张三"
+        }
+      },
+      "sort":[
+        {
+          "age": {
+            "order": "asc"
+          }
+        }
+      ],
+      "from": 0,  // 从什么索引下标开始
+      "size": 2 // 每页多少结果
+    }
+    
+    
+    // 多条件查询 must = and
+    GET ntuzy/user/_search
+    {
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "name": "张三"
+              }
+            },
+            {
+              "match": {
+                "age": 3
+              }
+            }
+          ]
+        }
+      }
+    }
+    
+    // should = or
+    // must_not = not
+    GET ntuzy/user/_search
+    {
+      "query": {
+        "bool": {
+          "should": [
+            {
+              "match": {
+                "name": "张三"
+              }
+            },
+            {
+              "match": {
+                "age": 3
+              }
+            }
+          ]
+        }
+      }
+    }
+    
+    
+    // 过滤
+    GET ntuzy/user/_search
+    {
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "name": "张三"
+              }
+            }
+          ],
+          "filter": {
+            "range": {
+              "age": {
+                "gte": 10
+              }
+            }
+          }
+        }
+      }
+    }
+    ```
+
+  + 匹配多个条件
+
+    多个条件之间用空格隔开
+
+    ```
+    GET ntuzy/user/_search
+    {
+      "query": {
+        "match": {
+          "tags": "男 技术"
+        }
+      }
+    }
+    ```
+
+  + 精确查找
+
+    term查询是直接通过倒排索引指定的词精确查找
+
+    关于分词：
+
+    term 直接精切查询
+
+    match 会使用分词器解析
+
+    两个类型
+
+    text 会被分词器解析
+
+    keyword 不会被分词器解析
+
+    ![image-20201214205624017](images/image-20201214205624017.png)term同样可以多条件查询
+
+    ![image-20201214210330205](images/image-20201214210330205.png)
+
+  + 高亮查询
+
+    ![image-20201214210526078](images/image-20201214210526078.png)
+
+  + 自定义高亮
+
+    ![image-20201214210737057](images/image-20201214210737057.png)
+
+  + 查看默认信息
+
+    ```json
+    {
+      "test3" : {
+        "aliases" : { },
+        "mappings" : {
+          "properties" : {
+            "age" : {
+              "type" : "long"
+            },
+            "birth" : {
+              "type" : "date"
+            },
+            "name" : {
+              "type" : "text",
+              "fields" : {
+                "keyword" : {
+                  "type" : "keyword",
+                  "ignore_above" : 256
+                }
+              }
+            }
+          }
+        },
+        "settings" : {
+          "index" : {
+            "creation_date" : "1607945985550",
+            "number_of_shards" : "1",
+            "number_of_replicas" : "1",
+            "uuid" : "-aNybPjgTFSSA54YCJATBA",
+            "version" : {
+              "created" : "7060199"
+            },
+            "provided_name" : "test3"
+          }
+        }
+      }
+    }
+    
+    ```
+
+    如果自己的文档字段没有指定，那么es就会给我们默认配置字段类型
+
+    通过命令elasticsearch
+
+    > GET _cat/health
+    >
+    > GET _cat/indices?v
+
++ 更新: PUT 直接覆盖或者POST
+
+  ```
+  PUT /test1/type1/1
+  {
+    "name": "狂神说123",
+    "age": 3
+  }
+  
+  POST /test3/_doc/1/_update
+  {
+    "doc":{
+      "name": "张三123"
+    }
+  }
+  ```
+
++ delete
+
+  ```
+  delete test1
+  ```
+
+  
 
 
 
