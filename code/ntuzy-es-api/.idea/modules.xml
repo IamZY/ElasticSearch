@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/ntuzy-es-api/ntuzy-es-api.iml" filepath="$PROJECT_DIR$/ntuzy-es-api/ntuzy-es-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ntuzy-es-jd/ntuzy-es-jd.iml" filepath="$PROJECT_DIR$/ntuzy-es-jd/ntuzy-es-jd.iml" />
     </modules>
   </component>
 </project>
